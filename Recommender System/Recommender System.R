@@ -25,7 +25,36 @@ connectMySQL <-function(){
   return (con)
 }
 
-#for testing purpose
+#for testing purpose database
 con = connectPostgres()
 dbExistsTable(con, "album")
 dbGetQuery(con, "SELECT * from album")
+
+
+#for testing purpose recommender system
+A = matrix(c(1,NA,3,NA,NA,5,NA,NA,5,NA,4,NA,
+        NA,NA,5,4,NA,NA,4,NA,NA,2,1,3,
+        2,4,NA,1,2,NA,3,NA,4,3,5,NA,
+        NA,2,4,NA,5,NA,NA,4,NA,NA,2,NA,
+        NA,NA,4,3,4,2,NA,NA,NA,NA,2,5,
+        1,NA,3,NA,3,NA,NA,2,NA,NA,4,NA),nrow=6,ncol=12,byrow = TRUE)
+rownames(A) <- paste('movie', 1:6)
+colnames(A) <- paste('user', 1:12)
+#A <- t(A)
+r <- as(A, "realRatingMatrix") #creates rating matrix
+getRatingMatrix(r) #for testing
+r_m <- normalize(r) #normalization
+getRatingMatrix(r_m) #for testing
+
+Rec.model<-Recommender(r, method = "UBCF")
+re <- predict(Rec.model, r, n=6)
+as(re, "list")
+m <- predict(Rec.model, r, type="ratings")
+as(m, "list")
+
+
+
+
+
+
+
