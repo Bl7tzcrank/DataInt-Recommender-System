@@ -51,7 +51,11 @@ Rec.model<-Recommender(r, method = "popular")
 re <- predict(Rec.model, r, n=1) #n = number of recommendations to each user
 as(re, "list")
 
-
+#binary model on general popularity
+b<- binarize(r, minRating=0)
+Rec.model<-Recommender(b, method = "popular")
+re <- predict(Rec.model, b, n=1)
+as(re, "list")
 
 
 
