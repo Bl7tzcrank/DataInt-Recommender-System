@@ -25,12 +25,50 @@ connectMySQL <-function(){
   return (con)
 }
 
-#for testing purpose database
+#calculates the preferences matrix for CF
+#input: Matrix M with ratings (rows:Users,columns:Items)
+CFRecommender = function(M){
+  r <- as(M, "realRatingMatrix") #creates rating matrix
+  Rec.model<-Recommender(r, method = "IBCF")
+  rp <- predict(Rec.model, r, type="ratings")
+  return(as(rp,"matrix"))
+}
+
+#calculates the preference matrix for CB
+#input: Matrix U with ratings (rows:Users,columns:Items) and Matrix F with features (rows:Features,columns:Items)
+CBRecommender = function(U,F){
+  WU <- matrix(0,nrow(U),ncol(F)) #empty matrix
+  rownames(WU)=rownames(U)
+  colnames(WU)=colnames(F)
+  U[is.na(U)] <- 0 #replace NA with 0
+  F[is.na(F)] <- 0
+  
+  #calculates the weigthed profiles
+  y <- apply(U,1,function(x){
+    y = 0
+    for (i in 1:length(x)){
+      y = y +((x[i]*F[,i])/sum(x!=0))
+    }
+    return(y)
+  })
+  
+  #calculates the cos-difference between each weigthed profile and item profile
+  for(i in 1:nrow(WU)){
+    for(j in 1:ncol(WU)){
+      WU[i,j] = sum(F[,j]*y[,i])/(sqrt(sum(F[,j]^2))*sqrt(sum(y[,i]^2)))
+    }
+  }
+  return(WU)
+}
+
+
+#############################testing#############################
+#testing - database
 con = connectPostgres()
 dbExistsTable(con, "album")
 dbGetQuery(con, "SELECT * from album")
 
-#Section for collaborative filtering
+#testing - Section for collaborative filtering
 
 #for testing purpose recommender system
 A = matrix(c(1,NA,3,NA,NA,5,NA,NA,5,NA,4,NA,
@@ -75,7 +113,7 @@ rexb <- predict(Rec.model, b, n=1)
 as(reub,"matrix")
 as(rexb,"list")
 
-#Section for content-based recommendations
+#testing - Section for content-based recommendations
 
 #for testing purpose recommender system
 F = matrix(c(NA,0.6,0.7,1.0,1.0,0.6,0.5,0.5,
