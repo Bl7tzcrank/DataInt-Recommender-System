@@ -48,16 +48,21 @@ getRatingMatrix(r_m) #for testing
 
 #model on general popularity
 Rec.model<-Recommender(r, method = "popular")
-re <- predict(Rec.model, r, n=1) #n = number of recommendations to each user
-as(re, "list")
+rey <- predict(Rec.model, r, n=1) #n = number of recommendations to each user
+as(rey, "list")
+rep <- predict(Rec.model, r, type="ratings") #prediction
+as(rep,"matrix")
 
 #binary model on general popularity
 b<- binarize(r, minRating=0)
 Rec.model<-Recommender(b, method = "popular")
-re <- predict(Rec.model, b, n=1)
-as(re, "list")
+rek <- predict(Rec.model, b, n=1)
+as(rek, "list")
 
-
-
-
+# model on IBCF (Item based collaaborative filtering)
+Rec.model<-Recommender(r, method = "IBCF")
+reu <- predict(Rec.model, r, type="ratings")
+rex <- predict(Rec.model, r, n=1)
+as(reu,"matrix")
+as(rex,"list")
 
