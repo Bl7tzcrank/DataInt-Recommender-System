@@ -66,3 +66,16 @@ rex <- predict(Rec.model, r, n=1)
 as(reu,"matrix")
 as(rex,"list")
 
+# binary model on IBCF
+b<- binarize(r, minRating=0)
+Rec.model<-Recommender(b, method = "IBCF")
+reub <- predict(Rec.model, b, type="ratings")
+rexb <- predict(Rec.model, b, n=1)
+as(reub,"matrix")
+as(rexb,"list")
+
+
+
+
+
+
