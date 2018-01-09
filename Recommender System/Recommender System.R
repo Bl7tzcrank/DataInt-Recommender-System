@@ -40,17 +40,16 @@ A = matrix(c(1,NA,3,NA,NA,5,NA,NA,5,NA,4,NA,
         1,NA,3,NA,3,NA,NA,2,NA,NA,4,NA),nrow=6,ncol=12,byrow = TRUE)
 rownames(A) <- paste('movie', 1:6)
 colnames(A) <- paste('user', 1:12)
-#A <- t(A)
+A <- t(A)
 r <- as(A, "realRatingMatrix") #creates rating matrix
 getRatingMatrix(r) #for testing
 r_m <- normalize(r) #normalization
 getRatingMatrix(r_m) #for testing
 
-Rec.model<-Recommender(r, method = "UBCF")
-re <- predict(Rec.model, r, n=6)
+#model on general popularity
+Rec.model<-Recommender(r, method = "popular")
+re <- predict(Rec.model, r, n=1) #n = number of recommendations to each user
 as(re, "list")
-m <- predict(Rec.model, r, type="ratings")
-as(m, "list")
 
 
 
