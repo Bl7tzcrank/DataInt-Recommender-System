@@ -1,29 +1,74 @@
-install.packages("recommenderlab")
-library("recommenderlab")
+# Recommendersystem based on the 4Play Database
 
-install.packages("RPostgreSQL")
+# ----------------------- HowTo ----------------------- #
+# 1. Mark all code before the testing part and run it
+# 2. set up a db-connection using connectToDB()
+# 3. create the ranking-martix m using createUserSongRanking()
+# 4. create the recommenation using CFRecommender(m)
+
+# ----------------------- packages ----------------------- #
+# (uncomment install.packeges if you don't have them installed)
+# install.packages("recommenderlab")
+library("recommenderlab")
+# install.packages("RPostgreSQL")
 require("RPostgreSQL")
-install.packages("RMySQL")
+# install.packages("RMySQL")
 library("RMySQL")
 
-# create a connection to postgres DB
-connectPostgres <-function(){
-  pw <- {"Password"}
-  drv <- dbDriver("PostgreSQL")
-  con <- dbConnect(drv, dbname = "Data Integration",
-                   host = "localhost", port = 5432,
-                   user = "postgres", password = pw)
+
+
+# ----------------------- code ----------------------- #
+
+# create a database connection
+connectToDB = function(db_driver, db_name, host,  username, pw, port=0) {
+  if (port > 0){
+    connection = dbConnect(db_driver, host = host, port = port, dbname = db_name, 
+                           user = username, password = pw)
+  }
+  else {
+    connection = dbConnect(db_driver, host = host, dbname = db_name, 
+                           user = username, password = pw)
+  }
   rm(pw)
-  return (con)
+  return(connection)
 }
 
-#create a connection to MySQL DB (not tested yet)
-connectMySQL <-function(){
-  pw <- {"PASSWORD"}
-  con <- dbConnect(MySQL(), user= "user", password= pw, 
-                   dbname="database_name", host="localhost")
-  rm(pw)
-  return (con)
+
+# create User-Song-Ranking-Matrix
+# as parameter give a database connection and say if the matrix should be filled with 1 only
+# (which is the original DB value) or with a random value between 1 and 5
+createUserSongRanking = function(db_connection, user_table_name, song_table_name, relation_name, binary=TRUE){
+  # create dataframes out of the user, song, and user_favourited_song tables
+  user_query = paste('select * from', user_table_name, sep=' ')
+  user_table = dbSendQuery(db_connection, user_query)
+  user_df = fetch(user_table)
+  
+  song_query = paste('select * from', song_table_name, sep=' ')
+  song_table = dbSendQuery(db_connection, song_query)
+  song_df = fetch(song_table)
+  
+  like_query = paste('select * from', relation_name, sep=' ')
+  like_table = dbSendQuery(db_connection, like_query)
+  like_df = fetch(like_table)
+  
+  # create the initial dataframe (Rank-Matrix)
+  m = data.frame(matrix(NA, nrow = nrow(user_df), ncol = nrow(song_df)))
+  colnames(m) = song_df$songID
+  row.names(m) = user_df$userID
+  
+  # for every entry in the user_favourited_song table, set the respective matrix entry
+  for (i in 1:nrow(like_df)){
+    if (binary){
+      value = 1
+    }
+    else {
+      value = sample(c(1:5),1,replace = TRUE)
+    }
+    m[like_df[i,]$userID, like_df[i,]$songID] = value
+  }
+
+  # return the ranking matrix
+  return(as.matrix(m))
 }
 
 #calculates the preferences matrix for CF
@@ -63,11 +108,27 @@ CBRecommender = function(U,F){
 }
 
 
-#############################testing#############################
-#testing - database
-con = connectPostgres()
-dbExistsTable(con, "album")
-dbGetQuery(con, "SELECT * from album")
+# ----------------------- testing ----------------------- #
+# testing - database
+
+# Uncomment / set the respective values here
+# driver = dbDriver("PostgreSQL")
+# driver = MySQL()
+# dbname = 'Data Integration'
+# dbname = '4Play'
+# host = '127.0.0.1'
+# port = 5432
+# port = 0
+# user = 'postgres'
+# user = 'root'
+# password = 'pw'
+# password = ''
+# con = dbConnect(driver, dbname = dbname,
+#                  host = host, port = port,
+#                  user = user, password = pw)
+# dbExistsTable(con, "album")
+# dbGetQuery(con, "SELECT * from album")
+
 
 #testing - Section for collaborative filtering
 
