@@ -4,21 +4,23 @@
 # Uncomment / set the respective values here
 # driver = dbDriver("PostgreSQL")
 # driver = MySQL()
-# dbname = 'Data Integration'
+# dbname = 'DataIntegration'
 # dbname = '4Play'
 # host = '127.0.0.1'
 # port = 5432
-# port = 0
+# port = 3006
 # user = 'postgres'
 # user = 'root'
-# password = 'pw'
+# pw = 'pw'
 # password = ''
 # con = dbConnect(driver, dbname = dbname,
 #                  host = host, port = port,
 #                  user = user, password = pw)
-# dbExistsTable(con, "album")
-# dbGetQuery(con, "SELECT * from album")
+# dbExistsTable(con, "song")
+ 
+#testing - Section for generating additional data
 
+user_song = createUserSongRelations(con)
 
 #testing - Section for collaborative filtering
 

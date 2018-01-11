@@ -33,6 +33,37 @@ connectToDB = function(db_driver, db_name, host,  username, pw, port=0) {
   return(connection)
 }
 
+# generates additional user-song-relations for the user_favourited_song table
+createUserSongRelations = function(connection){
+  number_of_new_relations = 5000
+  users = dbGetQuery(connection, "SELECT * from users")
+  songs = dbGetQuery(connection, "SELECT * from song")
+  user_favourited_song = dbGetQuery(connection, "SELECT * from user_favourited_song")
+  
+  new_users = c()
+  new_songs = c()
+  new_dates = c()
+  for(i in 1:number_of_new_relations){
+    rUser = floor(runif(1, 1, NROW(users)))
+    rSong = floor(runif(1, 1, NROW(songs)))
+    
+    new_users = append(new_users, users[rUser,1])
+    new_songs = append(new_songs, songs[rSong,1])
+  }
+  new_relations = data.frame('userid' = new_users, 'songid' = new_songs)
+  all_relations_with_potential_duplicates = rbind(user_favourited_song[1:2], new_relations)
+  
+  consistent_relations = unique(all_relations_with_potential_duplicates)
+  
+  
+  for(j in (NROW(user_favourited_song)+1):NROW(consistent_relations)){
+    #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-song relation)
+    randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
+    new_dates = append(new_dates, randomdate)
+  }
+  alldates = rbind(user_favourited_song[3], data.frame('date' = new_dates))
+  return(data.frame(consistent_relations, alldates))
+}
 
 # create User-Song-Ranking-Matrix
 # as parameter give a database connection and say if the matrix should be filled with 1 only
