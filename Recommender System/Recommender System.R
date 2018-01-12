@@ -42,7 +42,6 @@ createUserSongRelations = function(connection){
   
   new_users = c()
   new_songs = c()
-  new_dates = c()
   for(i in 1:number_of_new_relations){
     rUser = floor(runif(n = 1, min = 1, max = NROW(users)))
     rSong = floor(runif(n = 1, min = 1, max = NROW(songs)))
@@ -59,7 +58,6 @@ createUserSongRelations = function(connection){
   for(j in (NROW(user_favourited_song)+1):NROW(consistent_relations)){
     #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-song relation)
     randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
-    #new_dates = append(new_dates, randomdate)
     query = paste0("INSERT INTO user_favourited_song (userid, songid, date) VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
     dbSendQuery(connection, query)
   }
