@@ -13,7 +13,7 @@ library("recommenderlab")
 # install.packages("RPostgreSQL")
 require("RPostgreSQL")
 # install.packages("RMySQL")
-library("RMySQL")
+#library("RMySQL")
 
 
 
@@ -35,7 +35,7 @@ connectToDB = function(db_driver, db_name, host,  username, pw, port=0) {
 
 # generates additional user-song-relations for the user_favourited_song table
 createUserSongRelations = function(connection){
-  number_of_new_relations = 5000
+  number_of_new_relations = 10
   users = dbGetQuery(connection, "SELECT * from users")
   songs = dbGetQuery(connection, "SELECT * from song")
   user_favourited_song = dbGetQuery(connection, "SELECT * from user_favourited_song")
@@ -44,8 +44,8 @@ createUserSongRelations = function(connection){
   new_songs = c()
   new_dates = c()
   for(i in 1:number_of_new_relations){
-    rUser = floor(runif(1, 1, NROW(users)))
-    rSong = floor(runif(1, 1, NROW(songs)))
+    rUser = floor(runif(n = 1, min = 1, max = NROW(users)))
+    rSong = floor(runif(n = 1, min = 1, max = NROW(songs)))
     
     new_users = append(new_users, users[rUser,1])
     new_songs = append(new_songs, songs[rSong,1])
@@ -59,10 +59,12 @@ createUserSongRelations = function(connection){
   for(j in (NROW(user_favourited_song)+1):NROW(consistent_relations)){
     #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-song relation)
     randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
-    new_dates = append(new_dates, randomdate)
+    #new_dates = append(new_dates, randomdate)
+    query = paste0("INSERT INTO user_favourited_song (userid, songid, date) VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
+    dbSendQuery(connection, query)
   }
-  alldates = rbind(user_favourited_song[3], data.frame('date' = new_dates))
-  return(data.frame(consistent_relations, alldates))
+  
+  return(paste0(NROW(consistent_relations)-NROW(user_favourited_song), " new user-song relations were created and written to the database!"))
 }
 
 # create User-Song-Ranking-Matrix
