@@ -16,11 +16,14 @@
 # con = dbConnect(driver, dbname = dbname,
 #                  host = host, port = port,
 #                  user = user, password = pw)
-# dbExistsTable(con, "user_favourited_song")
+ dbExistsTable(con, "user_favourited_playlist")
  
 #testing - Section for generating additional data
-
-createUserSongRelations(con)
+ numberofnewentries = 100
+ 
+ createUserSongRelations(con, numberofnewentries)
+ createUserAlbumRelations(con, numberofnewentries)
+ createUserPlaylistRelations(con, numberofnewentries)
 
 #testing - Section for collaborative filtering
 
