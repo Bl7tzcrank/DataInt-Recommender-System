@@ -1,8 +1,10 @@
 # Recommendersystem based on the 4Play Database
 
 # ----------------------- HowTo ----------------------- #
-# 1. Mark all code before the testing part and run it
-# 2. set up a db-connection using connectToDB()
+# 1. Mark all code and run it (maybe uncomment the install.packages statements in the packages section)
+# 2. set up a db-connection using db = connectToDB(db_driver, db_name, host,  username, pw, [port])
+# 3. As our database only has about 40 likes (User likes a Song), we need to add some more entries here
+# using (e.g.) createdditionalRelationa(db, 5000, 'User', 'Song', 'User_favourited_song')
 # 3. create the ranking-martix m using createUserSongRanking()
 # 4. create the recommenation using CFRecommender(m)
 
@@ -13,13 +15,14 @@ library("recommenderlab")
 # install.packages("RPostgreSQL")
 require("RPostgreSQL")
 # install.packages("RMySQL")
-# library("RMySQL")
+library("RMySQL")
 
 
 
 # ----------------------- code ----------------------- #
 
 # create a database connection
+# port is optional as sometimes you need to pass a port and sometimes not
 connectToDB = function(db_driver, db_name, host,  username, pw, port=0) {
   if (port > 0){
     connection = dbConnect(db_driver, host = host, port = port, dbname = db_name, 
@@ -33,101 +36,53 @@ connectToDB = function(db_driver, db_name, host,  username, pw, port=0) {
   return(connection)
 }
 
-# generates additional user-song-relations for the user_favourited_song table
-createUserSongRelations = function(connection, amountofnewdata){
-  number_of_new_relations = amountofnewdata
-  users = dbGetQuery(connection, "SELECT * from users")
-  songs = dbGetQuery(connection, "SELECT * from song")
-  user_favourited_song = dbGetQuery(connection, "SELECT * from user_favourited_song")
+
+# generate additional database entries for the x_favourited_y table
+# where x and y are tables on their own and the x_favourited_y tables
+# consists of FK-pairs pointing to the respective IDs
+createAdditionalRelations = function(db_connection, number_of_new_entries, user_table_name, other_table_name, relation_table_name){
+  user_query = paste0('select * from ', user_table_name)
+  user_table = dbGetQuery(db_connection, user_query)
+  
+  other_query = paste0('select * from ', other_table_name)
+  other_table = dbGetQuery(db_connection, other_query)
+  
+  like_query = paste0('select * from ', relation_table_name)
+  like_table = dbGetQuery(db_connection, like_query)
   
   new_users = c()
   new_songs = c()
-  for(i in 1:number_of_new_relations){
-    rUser = floor(runif(n = 1, min = 2, max = NROW(users)))
-    rSong = floor(runif(n = 1, min = 1, max = NROW(songs)))
+  for(i in 1:number_of_new_entries){
+    rUser = floor(runif(n = 1, min = 2, max = NROW(user_table)))
+    rSong = floor(runif(n = 1, min = 1, max = NROW(other_table)))
     
-    new_users = append(new_users, users[rUser,1])
-    new_songs = append(new_songs, songs[rSong,1])
+    new_users = append(new_users, user_table[rUser,1])
+    new_songs = append(new_songs, other_table[rSong,1])
   }
-  new_relations = data.frame('userid' = new_users, 'songid' = new_songs)
-  all_relations_with_potential_duplicates = rbind(user_favourited_song[1:2], new_relations)
   
+  # get the names of the like_table columns (db-column-names)
+  relation_col_names = colnames(like_table)
+  
+  # create a new dataframe with the respective col_names
+  new_relations = data.frame(new_users, new_songs)
+  colnames(new_relations) = c(relation_col_names[1], relation_col_names[2])
+
+  # delete duplicates
+  all_relations_with_potential_duplicates = rbind(like_table[1:2], new_relations)
   consistent_relations = unique(all_relations_with_potential_duplicates)
-  
-  
-  for(j in (NROW(user_favourited_song)+1):NROW(consistent_relations)){
+
+  # add the new entries to the DB
+  for(j in (NROW(like_table)+1):NROW(consistent_relations)){
     #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-song relation)
     randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
-    query = paste0("INSERT INTO user_favourited_song (userid, songid, date) VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
-    dbSendQuery(connection, query)
+    query = paste0("INSERT INTO ", relation_table_name," (",relation_col_names[1],",",relation_col_names[2],",",relation_col_names[3],") VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
+    print(query)
+    dbSendQuery(db_connection, query)
   }
-  
-  return(paste0(NROW(consistent_relations)-NROW(user_favourited_song), " new user-song relations were created and written to the database!"))
+
+  return(paste0(NROW(consistent_relations)-NROW(like_table), " new relations were created and written to the database!"))
 }
 
-# generates additional user-album-relations for the user_favourited_album table
-createUserAlbumRelations = function(connection, amountofnewdata){
-  number_of_new_relations = amountofnewdata
-  users = dbGetQuery(connection, "SELECT * from users")
-  albums = dbGetQuery(connection, "SELECT * from album")
-  user_favourited_album = dbGetQuery(connection, "SELECT * from user_favourited_album")
-  
-  new_users = c()
-  new_albums = c()
-  for(i in 1:number_of_new_relations){
-    rUser = floor(runif(n = 1, min = 2, max = NROW(users)))
-    rAlbum = floor(runif(n = 1, min = 1, max = NROW(albums)))
-    
-    new_users = append(new_users, users[rUser,1])
-    new_albums = append(new_albums, albums[rAlbum,1])
-  }
-  new_relations = data.frame('userid' = new_users, 'albumid' = new_albums)
-  all_relations_with_potential_duplicates = rbind(user_favourited_album[1:2], new_relations)
-  
-  consistent_relations = unique(all_relations_with_potential_duplicates)
-  
-  
-  for(j in (NROW(user_favourited_album)+1):NROW(consistent_relations)){
-    #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-album relation)
-    randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
-    query = paste0("INSERT INTO user_favourited_album (userid, albumid, date) VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
-    dbSendQuery(connection, query)
-  }
-  
-  return(paste0(NROW(consistent_relations)-NROW(user_favourited_album), " new user-album relations were created and written to the database!"))
-}
-
-# generates additional user-playlist-relations for the user_favourited_playlist table
-createUserPlaylistRelations = function(connection, amountofnewdata){
-  number_of_new_relations = amountofnewdata
-  users = dbGetQuery(connection, "SELECT * from users")
-  playlists = dbGetQuery(connection, "SELECT * from playlist")
-  user_favourited_playlist = dbGetQuery(connection, "SELECT * from user_favourited_playlist")
-  
-  new_users = c()
-  new_playlists = c()
-  for(i in 1:number_of_new_relations){
-    rUser = floor(runif(n = 1, min = 2, max = NROW(users)))
-    rPlaylist = floor(runif(n = 1, min = 1, max = NROW(playlists)))
-    
-    new_users = append(new_users, users[rUser,1])
-    new_playlists = append(new_playlists, playlists[rPlaylist,1])
-  }
-  new_relations = data.frame('userid' = new_users, 'playlistid' = new_playlists)
-  all_relations_with_potential_duplicates = rbind(user_favourited_playlist[1:2], new_relations)
-  
-  consistent_relations = unique(all_relations_with_potential_duplicates)
-  
-  
-  for(j in (NROW(user_favourited_playlist)+1):NROW(consistent_relations)){
-    #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-playlist relation)
-    randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
-    query = paste0("INSERT INTO user_favourited_playlist (userid, playlistid, date) VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
-    dbSendQuery(connection, query)
-  }
-  
-  return(paste0(NROW(consistent_relations)-NROW(user_favourited_playlist), " new user-playlist relations were created and written to the database!"))
-}
 
 # create User-Song-Ranking-Matrix
 # as parameter give a database connection and say if the matrix should be filled with 1 only
