@@ -2,11 +2,18 @@
 
 # ----------------------- HowTo ----------------------- #
 # 1. Mark all code and run it (maybe uncomment the install.packages statements in the packages section)
+
 # 2. set up a db-connection using db = connectToDB(db_driver, db_name, host,  username, pw, [port])
-# 3. As our database only has about 40 likes (User likes a Song), we need to add some more entries here
+
+# 2a. As our database only has about 40 likes (User likes a Song), we need to add some more entries here
 # using (e.g.) createdditionalRelations(db, 5000, 'User', 'Song', 'User_favourited_song')
-# 3. create the ranking-martix m using createUserSongRanking()
-# 4. create the recommenation using CFRecommender(m)
+
+# 3. call createRecommendations(db, user_table_name, other_table_name, relation_table_name, 
+# user_id_col_name, other_id_col_name, user_firstname_col_name,
+# user_lastname_col_name, other_printed_col_name, binary=FALSE) 
+# (e.g. createRecommendations(db, 'User', 'Song', 'User_favourited_song', 'userID', 'songID', 'firstname', 'lastname', 'title')) 
+# to get a list of Users with their most recommended items
+
 
 # ----------------------- packages ----------------------- #
 # (uncomment install.packeges if you don't have them installed)
@@ -131,6 +138,72 @@ createRanking = function(db_connection, user_table_name, other_table_name, relat
   # return the ranking matrix
   return(as.matrix(m))
 }
+
+
+# function that creates a list of lists with users as keys and a list of top 10 recommended 
+# songs as value. Params:
+# db: database connetion, 
+# user_table_name: db-table-name of the users table, 
+# other_table_name: db-table-name of the item table, 
+# relation_table_name: db-table-name of the user-item-relation, 
+# user_id_col_name: db-column-name of the user-ID, 
+# other_id_col_name: db-column-name of the item-ID,  
+# user_firstname_col_name: db-column-name of the user's firstname, 
+# user_lastname_col_name: db-column-name of the user's lastname, 
+# other_printed_col_name: db-column-name of the item's attribute that is supposed to be printed, 
+# binary=FALSE: if true, the ranking matrix only consists of 0 and 1, otherwise of rankings with values 1-5
+createRecommendations = function(db, user_table_name, other_table_name, relation_table_name, 
+                                 user_id_col_name, other_id_col_name, user_firstname_col_name,
+                                 user_lastname_col_name, other_printed_col_name, binary=FALSE){
+  # create a ranking matrix using DB-entries
+  ranking_matrix = createRanking(db, user_table_name, other_table_name, relation_table_name, binary=binary)
+  
+  # use that matrix to get a recommendation matrix
+  rec_matrix = CFRecommender(ranking_matrix)
+  
+  # create a list of users with lists of most recommended items
+  recommendations = list()
+  
+  # create dataframes out of the user, song, and user_favourited_song tables
+  user_query = paste0('select * from ', user_table_name)
+  user_table = dbGetQuery(db, user_query)
+  
+  other_query = paste0('select * from ', other_table_name)
+  other_table = dbGetQuery(db, other_query)
+  
+  # for each user, create a list with most recommended items (at least ranking of 4)
+  # and add an entry to the recommendations-list
+  for(user_id in row.names(rec_matrix)){
+    sorted_by_rec = sort(rec_matrix[user_id,], decreasing = TRUE)
+    song_ids = names(which(sorted_by_rec >= 4))[1:10]
+    
+    # write the user's name instead of the ID
+    user_name = paste(user_table[which(user_table[,user_id_col_name] == user_id), user_firstname_col_name], 
+                      " ",
+                      user_table[which(user_table[,user_id_col_name] == user_id), user_lastname_col_name],
+                      " [ID: ",user_id ,"]",
+                      sep="")
+    
+    # same applies for songs
+    song_names = c()
+    for (song_id in song_ids){
+      if (is.na(song_id)){}
+      else{
+        name = paste(other_table[which(other_table[,other_id_col_name] == song_id), other_printed_col_name], 
+                     " [ID: ",song_id ,"]",
+                     sep="")
+        song_names = c(song_names, name)
+      }
+      
+    }
+    
+    recommendations[[user_name]] = song_names
+  }
+  print(recommendations)
+}
+
+
+
 
 
 #calculates the preferences matrix for CF
