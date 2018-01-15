@@ -6,7 +6,7 @@
 # 2. set up a db-connection using db = connectToDB(db_driver, db_name, host,  username, pw, [port])
 
 # 2a. As our database only has about 40 likes (User likes a Song), we need to add some more entries here
-# using (e.g.) createdditionalRelations(db, 5000, 'User', 'Song', 'User_favourited_song')
+# using (e.g.) createAdditionalRelations(db, 5000, 'User', 'Song', 'User_favourited_song')
 
 # 3. call createRecommendations(db, user_table_name, other_table_name, relation_table_name, 
 # user_id_col_name, other_id_col_name, user_firstname_col_name,
