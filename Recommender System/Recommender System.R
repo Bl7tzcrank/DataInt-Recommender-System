@@ -4,7 +4,7 @@
 # 1. Mark all code and run it (maybe uncomment the install.packages statements in the packages section)
 # 2. set up a db-connection using db = connectToDB(db_driver, db_name, host,  username, pw, [port])
 # 3. As our database only has about 40 likes (User likes a Song), we need to add some more entries here
-# using (e.g.) createdditionalRelationa(db, 5000, 'User', 'Song', 'User_favourited_song')
+# using (e.g.) createdditionalRelations(db, 5000, 'User', 'Song', 'User_favourited_song')
 # 3. create the ranking-martix m using createUserSongRanking()
 # 4. create the recommenation using CFRecommender(m)
 
@@ -76,7 +76,6 @@ createAdditionalRelations = function(db_connection, number_of_new_entries, user_
     #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-song relation)
     randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
     query = paste0("INSERT INTO ", relation_table_name," (",relation_col_names[1],",",relation_col_names[2],",",relation_col_names[3],") VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
-    print(query)
     dbSendQuery(db_connection, query)
   }
 
@@ -85,41 +84,54 @@ createAdditionalRelations = function(db_connection, number_of_new_entries, user_
 
 
 # create User-Song-Ranking-Matrix
-# as parameter give a database connection and say if the matrix should be filled with 1 only
+# as parameter give a database connection, the table names and say if the matrix should be filled with 1 only
 # (which is the original DB value) or with a random value between 1 and 5
-createUserSongRanking = function(db_connection, user_table_name, song_table_name, relation_name, binary=TRUE){
+createRanking = function(db_connection, user_table_name, other_table_name, relation_table_name, binary=TRUE){
   # create dataframes out of the user, song, and user_favourited_song tables
-  user_query = paste('select * from', user_table_name, sep=' ')
-  user_table = dbSendQuery(db_connection, user_query)
-  user_df = fetch(user_table)
+  user_query = paste0('select * from ', user_table_name)
+  user_table = dbGetQuery(db_connection, user_query)
   
-  song_query = paste('select * from', song_table_name, sep=' ')
-  song_table = dbSendQuery(db_connection, song_query)
-  song_df = fetch(song_table)
+  other_query = paste0('select * from ', other_table_name)
+  other_table = dbGetQuery(db_connection, other_query)
   
-  like_query = paste('select * from', relation_name, sep=' ')
-  like_table = dbSendQuery(db_connection, like_query)
-  like_df = fetch(like_table)
+  like_query = paste0('select * from ', relation_table_name)
+  like_table = dbGetQuery(db_connection, like_query)
   
   # create the initial dataframe (Rank-Matrix)
-  m = data.frame(matrix(NA, nrow = nrow(user_df), ncol = nrow(song_df)))
-  colnames(m) = song_df$songID
-  row.names(m) = user_df$userID
+  m = data.frame(matrix(NA, nrow = nrow(user_table), ncol = nrow(other_table)))
+
+  # as the matrix needs to have the Users as rows and the Others (e.g. Song) as columns,
+  # we need to redefine the column- / row-names here
+  user_id = colnames(user_table)[1]
+  row_names = sort(user_table[,user_id])
+  
+  other_id = colnames(other_table)[1]
+  col_names = sort(other_table[,other_id])
+
+  colnames(m) = col_names
+  row.names(m) = row_names
+  
+  # get the ID names of the relation table
+  rel_first_id = colnames(like_table)[1]
+  rel_second_id = colnames(like_table)[2]
   
   # for every entry in the user_favourited_song table, set the respective matrix entry
-  for (i in 1:nrow(like_df)){
+  for (i in 1:nrow(like_table)){
+    
     if (binary){
       value = 1
     }
     else {
       value = sample(c(1:5),1,replace = TRUE)
     }
-    m[like_df[i,]$userID, like_df[i,]$songID] = value
+    
+    m[paste0(like_table[i,rel_first_id]), paste0(like_table[i,rel_second_id])] = value
   }
 
   # return the ranking matrix
   return(as.matrix(m))
 }
+
 
 #calculates the preferences matrix for CF
 #input: Matrix M with ratings (rows:Users,columns:Items)
