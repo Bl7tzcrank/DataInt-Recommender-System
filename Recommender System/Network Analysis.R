@@ -24,3 +24,22 @@ plot(p,g1)
 #3.Fast greedy
 g <- cluster_fast_greedy(g1)
 plot(g,g1)
+
+#4.Walktrap
+w <- cluster_walktrap(g1)
+plot(w,g1)
+
+#5.leading eigenvector
+e <- cluster_leading_eigen(g1)
+plot(e,g1)
+
+#6.Spinglass
+s <- cluster_spinglass(g1)
+plot(s,g1)
+
+#7.Infomap
+i <- cluster_infomap(g1)
+plot(i,g1)
+
+#Furthermore
+edge_betweenness(g1)
