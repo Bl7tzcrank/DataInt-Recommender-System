@@ -78,6 +78,11 @@ user_song <- dbGetQuery(conn = con, "SELECT * FROM user_favourited_song")
 user_follower <- dbGetQuery(conn = con, "SELECT * FROM user_follower")
 artist_genre <- dbGetQuery(conn = con, "SELECT * FROM artist_genre")
 
+#create weighted graph
+user_song_weighted_graph = createWeightedGraph(user_song)
+song_production_weighted_graph = createWeightedGraph(song_production)
+E(song_production_weighted_graph)$weight
+
 
 #create new user-song relations
 createAdditionalRelations(con, 100, "users", "song", "user_favourited_song")
@@ -101,10 +106,10 @@ plot(g2) #visualization
 
 #1.Newman-Girvan
 #e <- edge.betweenness.community(g1, directed=F)
-c <- cluster_edge_betweenness(user_song_graph) 
+c <- cluster_edge_betweenness(song_production_weighted_graph) 
 membership(c)
 dendPlot(c, mode="hclust")
-plot(c,user_song_graph)
+plot(c,song_production_weighted_graph)
 
 plot(user_follower_graph, layout=layout.fruchterman.reingold)
 #2.Label propagation
