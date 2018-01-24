@@ -13,7 +13,7 @@ host = '127.0.0.1'
 port = 3006
 user = 'postgres'
 # user = 'root'
-pw = 'admin'
+pw = 'pw'
 # password = ''
  con = dbConnect(driver, dbname = dbname,
                   host = host, port = port,
@@ -22,21 +22,25 @@ pw = 'admin'
  
 ##function declaration ########################
  
- #Takes a dataframe (for example user_favourited songs) and 
+ #Takes a dataframe (for example user_favourited songs) and calculates the edgelist of the first
+ #two columns where as the first column is the entity for vertices and if there is the same column2 entry
+ #for a different column1 entry the two corresponding column1 entries will be c1 and c2 for the edgelist.
+ #For example: userid 1 favoures songid 2 and userid 10 favours songid 2, one row of the upcoming edgelist would be
+ # 1 - 10 - weight. The weight is determined by the number of same favourited songs. If userid 1 and 10 would only
+ #have this one songid (2) in common the weight would be 1. 
  createWeightedGraph = function(data){
-   #c1 = c()
-   #c2 = c()
+   c1 = c()
+   c2 = c()
+   weight = c()
    comparison = list()
-   #comparison[[1]] = c(0,0,0) #dummy entry for list comparison in the first step
+   comparison[[1]] = as.numeric(c(0,0,0)) #dummy entry for list comparison in the first step
    insertat = 1
    adjusted = FALSE
    cname1 = paste0(colnames(data)[1], "1")
    cname2 = paste0(colnames(data)[1], "2")
-   for(i in 1:nrow(data)){
-     for(j in i:nrow(data)){
+   for(i in 1:(nrow(data)-1)){
+     for(j in (i+1):nrow(data)){
        if(data[i,2] == data[j,2] && data[i,1] != data[j,1]){
-         #c1 = append(c1, data[i,1])
-         #c2 = append(c2, data[j,1])
          for(k in 1:length(comparison)){
            if(!adjusted && is.element(data[i,1], comparison[[k]][1:2]) && is.element(data[j,1], comparison[[k]][1:2])){
              comparison[[k]][3] = comparison[[k]][3] + 1
@@ -45,81 +49,41 @@ pw = 'admin'
            }
          }
          if(!adjusted){
-            comparison[[insertat]] = c(data[i,1], data[j,1], 1)
+            comparison[[insertat]] = as.numeric(c(data[i,1], data[j,1], 1))
             insertat = insertat + 1
          }
          adjusted = FALSE
        }
      }
    }
-   #df = data.frame(c1, c2)
-   #colnames(df) = c(cname1, cname2)
-   return(comparison)
+   for(i in 1:length(comparison)){
+     c1 = append(c1, comparison[[i]][1])
+     c2 = append(c2, comparison[[i]][2])
+     weight = append(weight, comparison[[i]][3])
+   }
+   df = data.frame(c1, c2, weight)
+   colnames(df) = c(cname1, cname2, "weight")
+   
+   graph = graph_from_data_frame(df[1:2], directed = FALSE)
+   E(graph)$weight = as.numeric(as.vector(df[,3]))
+   return(graph)
  }
- 
- createWeightedGraph(small_user_song)
- small_user_song = user_song[1:10,]
- 
- nrow(small_user_song)
- 
- user_song[100,2]
- user_song[1,2]
- test = list()
- test[[1]] = c(1,4,2)
- test[[2]] = c(4,5,6)
- test[[3]] = c(4,5,6)
- test[[1]][3] = test[[1]][3] + 1
- test = append(test[[]], c(3,7,9))
- test = test[1:2]
- length(test)
- if(is.element(1, test[[1]][1:2]) && is.element(2, test[[1]][1:2])){
-   print("Jawoll")
- } else{
-   print("NEIN")
- }
+
 ##end of function declaration #################
 
 #get the data for our graph
 
 song_production <- dbGetQuery(conn = con, "SELECT * FROM song_production")
 user_song <- dbGetQuery(conn = con, "SELECT * FROM user_favourited_song")
-artists <- dbGetQuery(conn = con, "SELECT * FROM artist")
 user_follower <- dbGetQuery(conn = con, "SELECT * FROM user_follower")
 artist_genre <- dbGetQuery(conn = con, "SELECT * FROM artist_genre")
 
-artists[1:2]
-
-nrow(user_song)
-
-
-user_song[(user_song$userid==23),]
-createedgelist(user_song)
-
-
-song_production_edgelist = createedgelist(song_production)
-user_song_edgelist = createedgelist(user_song[1:2])
-artist_genre_edgelist = createedgelist(artist_genre)
-nrow(artist_genre_edgelist)
-
-write.csv2(song_production_edgelist, "song_production_edgelist.csv")
-write.csv2(user_song_edgelist, "user_song_edgelist.csv")
-
-user_song_graph = graph_from_data_frame(user_song_edgelist, directed = FALSE)
-song_production_graph = graph_from_data_frame(song_production_edgelist, directed = FALSE)
-user_follower_graph = graph_from_data_frame(user_follower, directed = FALSE)
-artist_genre_graph = graph_from_data_frame(artist_genre_edgelist, directed = FALSE)
-
-E(user_follower_graph)$weight = 1/(length(V(user_follower_graph))-1)
 
 #create new user-song relations
 createAdditionalRelations(con, 100, "users", "song", "user_favourited_song")
 
-set.seed(50)
+#betweenness(song_prod_graph, directed = F, weights = NA)
 
-betweenness(song_prod_graph, directed = F, weights = NA)
-
-write.csv2(song_production, "song_production2.csv")
-g2 = graph_from_data_frame(test)
 #http://kateto.net/networks-r-igraph
 #https://cran.r-project.org/web/packages/igraph/igraph.pdf
 
@@ -137,10 +101,10 @@ plot(g2) #visualization
 
 #1.Newman-Girvan
 #e <- edge.betweenness.community(g1, directed=F)
-c <- cluster_edge_betweenness(artist_genre_graph) 
+c <- cluster_edge_betweenness(user_song_graph) 
 membership(c)
 dendPlot(c, mode="hclust")
-plot(c,artist_genre_graph)
+plot(c,user_song_graph)
 
 plot(user_follower_graph, layout=layout.fruchterman.reingold)
 #2.Label propagation
