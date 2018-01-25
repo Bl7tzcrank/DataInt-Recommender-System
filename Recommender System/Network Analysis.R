@@ -163,10 +163,10 @@ user_song <- dbGetQuery(conn = con, paste0("SELECT * FROM ", table_user_favourit
 user_follower <- dbGetQuery(conn = con, paste0("SELECT * FROM ", table_user_follower))
 artist_genre <- dbGetQuery(conn = con, paste0("SELECT * FROM ", table_artist_genre))
 
+
 # create weighted graph
 user_song_weighted_graph = createWeightedGraph(user_song)
 song_production_weighted_graph = createWeightedGraph(song_production)
-E(song_production_weighted_graph)$weight
 
 #betweenness(song_prod_graph, directed = F, weights = NA)
 
@@ -174,48 +174,56 @@ E(song_production_weighted_graph)$weight
 #https://cran.r-project.org/web/packages/igraph/igraph.pdf
 
 # ------------------------------------ Create the graph ------------------------------------ #
+
+# Test Graph
 g1 <- graph(edges = c("A","B", "B","C", "B","C", "C","A", "B","D", 
                       "D","E", "D","G", "D","F", "E","F", 
                       "F","G"), directed = FALSE)
-E(g1)$weight
-
 
 g1 <- delete.edges(g1, E(g1)[E(g1)$weight <= 3])
 plot(g1)
-g2 <- delete.edges(g2, E(g2)[E(g2)$weight <= 1])
-plot(g2) #visualization
 
-#1.Newman-Girvan
+
+# choose the graph you want to plot
+graph_to_plot = song_production_weighted_graph
+graph_to_plot = user_song_weighted_graph
+graph_to_plot = g1
+
+
+# Create diffrent plots
+# 1.Newman-Girvan
 #e <- edge.betweenness.community(g1, directed=F)
-c <- cluster_edge_betweenness(song_production_weighted_graph) 
+c <- cluster_edge_betweenness(graph_to_plot) 
 membership(c)
 dendPlot(c, mode="hclust")
-plot(c,song_production_weighted_graph)
+plot(c,graph_to_plot)
 
 plot(user_follower_graph, layout=layout.fruchterman.reingold)
-#2.Label propagation
-p <- cluster_label_prop(g1)
-plot(p,g1)
 
-#3.Fast greedy
-g <- cluster_fast_greedy(g1)
-plot(g,g1)
+# 2.Label propagation
+p <- cluster_label_prop(graph_to_plot)
+plot(p,graph_to_plot)
 
-#4.Walktrap
-w <- cluster_walktrap(g1)
-plot(w,g1)
+# 3.Fast greedy
+g <- cluster_fast_greedy(graph_to_plot)
+plot(g,graph_to_plot)
 
-#5.leading eigenvector
-e <- cluster_leading_eigen(g1)
-plot(e,g1)
+# 4.Walktrap
+w <- cluster_walktrap(graph_to_plot)
+plot(w,graph_to_plot)
 
-#6.Spinglass
-s <- cluster_spinglass(g1)
-plot(s,g1)
+# 5.leading eigenvector
+e <- cluster_leading_eigen(graph_to_plot)
+plot(e,graph_to_plot)
 
-#7.Infomap
-i <- cluster_infomap(g1)
-plot(i,g1)
+# 6.Spinglass
+s <- cluster_spinglass(graph_to_plot)
+plot(s,graph_to_plot)
 
-#Furthermore
-edge_betweenness(g1)
+# 7.Infomap
+i <- cluster_infomap(graph_to_plot)
+plot(i,graph_to_plot)
+
+# Furthermore
+edge_betweenness(graph_to_plot)
+
