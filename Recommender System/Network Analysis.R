@@ -227,3 +227,18 @@ plot(i,graph_to_plot)
 # Furthermore
 edge_betweenness(graph_to_plot)
 
+# Layout options
+plot(cnet,
+     net,
+vertex.color = "grey",
+vertex.size = 8,
+vertex.label.cex = 0.9,
+vertex.label.color ="black",
+vertex.label.dist=0,
+vertex.shape="square",
+edge.color = 'red',
+edge.arrow.size=.10,
+edge.arrow.width=10,
+arrow.mode=0,
+layout = layout.fruchterman.reingold)
+
