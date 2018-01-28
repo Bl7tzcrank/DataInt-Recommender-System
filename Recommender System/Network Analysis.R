@@ -1,7 +1,10 @@
 # Network analysis based on the 4Play Database
 
 # ------------------------------------ HowTo ------------------------------------ #
-# Let's see ...
+# 1. First of all, run the function definitions (and package installations / requirements / library calls)
+# 2. create a database connection by running the respective commands in the "Database connection" part
+# 3. select the database tables you need by running the respective commands in the "Get Graph Data" part
+# 4. follow the steps in the "Create the graph" part to generate a network graph
 
 # ------------------------------------ Package installations ------------------------------------ #
 install.packages("igraph")
@@ -18,6 +21,7 @@ driver = MySQL()
 
 dbname = 'DataIntegration'
 dbname = '4Play'
+dbname = '4PlayNetwork'
 
 host = '127.0.0.1'
 
@@ -40,50 +44,6 @@ con = dbConnect(driver, dbname = dbname,
  
 # ------------------------------------ Helper Function declaration ------------------------------------ #
 
-# generate additional database entries for the x_favourited_y table
-# where x and y are tables on their own and the x_favourited_y tables
-# consists of FK-pairs pointing to the respective IDs
-createAdditionalRelations = function(db_connection, number_of_new_entries, user_table_name, other_table_name, relation_table_name){
-  user_query = paste0('select * from ', user_table_name)
-  user_table = dbGetQuery(db_connection, user_query)
-  
-  other_query = paste0('select * from ', other_table_name)
-  other_table = dbGetQuery(db_connection, other_query)
-  
-  like_query = paste0('select * from ', relation_table_name)
-  like_table = dbGetQuery(db_connection, like_query)
-  
-  new_users = c()
-  new_songs = c()
-  for(i in 1:number_of_new_entries){
-    rUser = floor(runif(n = 1, min = 2, max = NROW(user_table)))
-    rSong = floor(runif(n = 1, min = 1, max = NROW(other_table)))
-    
-    new_users = append(new_users, user_table[rUser,1])
-    new_songs = append(new_songs, other_table[rSong,1])
-  }
-  
-  # get the names of the like_table columns (db-column-names)
-  relation_col_names = colnames(like_table)
-  
-  # create a new dataframe with the respective col_names
-  new_relations = data.frame(new_users, new_songs)
-  colnames(new_relations) = c(relation_col_names[1], relation_col_names[2])
-  
-  # delete duplicates
-  all_relations_with_potential_duplicates = rbind(like_table[1:2], new_relations)
-  consistent_relations = unique(all_relations_with_potential_duplicates)
-  
-  # add the new entries to the DB
-  for(j in (NROW(like_table)+1):NROW(consistent_relations)){
-    #creates a random date between 01-01-2000 and 01-01-2018 (needed for the 3rd column of our user-song relation)
-    randomdate = sample(seq(as.Date('2000/01/01'), as.Date('2018/01/01'), by="day"), 1)
-    query = paste0("INSERT INTO ", relation_table_name," (",relation_col_names[1],",",relation_col_names[2],",",relation_col_names[3],") VALUES (",consistent_relations[j, 1],",",consistent_relations[j, 2],",","\'", randomdate, "\')")
-    dbSendQuery(db_connection, query)
-  }
-  
-  return(paste0(NROW(consistent_relations)-NROW(like_table), " new relations were created and written to the database!"))
-}
 
 # Takes a dataframe (for example user_favourited songs) and calculates the edgelist of the first
 # two columns where as the first column is the entity for vertices and if there is the same column2 entry
@@ -154,8 +114,6 @@ table_artist_genre = 'artist_genre'
 table_user = 'user'
 table_song = 'song'
 
-#create new user-song relations as our DB is quite sparse
-createAdditionalRelations(con, 100, table_user, table_song, table_user_favourited_song)
 
 # get the data for our graph
 song_production <- dbGetQuery(conn = con, paste0("SELECT * FROM ", table_song_production))
@@ -167,16 +125,17 @@ artist_genre <- dbGetQuery(conn = con, paste0("SELECT * FROM ", table_artist_gen
 # create weighted graph
 user_song_weighted_graph = createWeightedGraph(user_song)
 song_production_weighted_graph = createWeightedGraph(song_production)
+artist_genre_weighted_graph = createWeightedGraph(artist_genre)
 
-#betweenness(song_prod_graph, directed = F, weights = NA)
+# information to the graph design
+# http://kateto.net/networks-r-igraph
+# https://cran.r-project.org/web/packages/igraph/igraph.pdf
 
-#http://kateto.net/networks-r-igraph
-#https://cran.r-project.org/web/packages/igraph/igraph.pdf
 
 # ------------------------------------ Create the graph ------------------------------------ #
 
 # Test Graph
-g1 <- graph(edges = c("A","B", "B","C", "B","C", "C","A", "B","D", 
+g1 <- graph(edges = c("A","B", "A","B", "A","B", "A","B", "A","B", "A","B", "A","B", "A","B", "A","B", "A","B", "A","B", "A","B", "B","C", "B","C", "C","A", "B","D", 
                       "D","E", "D","G", "D","F", "E","F", 
                       "F","G"), directed = FALSE)
 
@@ -187,58 +146,60 @@ plot(g1)
 # choose the graph you want to plot
 graph_to_plot = song_production_weighted_graph
 graph_to_plot = user_song_weighted_graph
+graph_to_plot = artist_genre_weighted_graph
 graph_to_plot = g1
 
 
-# Create diffrent plots
-# 1.Newman-Girvan
-#e <- edge.betweenness.community(g1, directed=F)
-c <- cluster_edge_betweenness(graph_to_plot) 
-membership(c)
-dendPlot(c, mode="hclust")
-plot(c,graph_to_plot)
+# Create diffrent network algorithms -> choose one of them to be plotted later
 
-plot(user_follower_graph, layout=layout.fruchterman.reingold)
+# 1.Newman-Girvan
+newman_girvan <- cluster_edge_betweenness(graph_to_plot) 
 
 # 2.Label propagation
-p <- cluster_label_prop(graph_to_plot)
-plot(p,graph_to_plot)
+label_propagation <- cluster_label_prop(graph_to_plot)
 
 # 3.Fast greedy
-g <- cluster_fast_greedy(graph_to_plot)
-plot(g,graph_to_plot)
+fast_greedy <- cluster_fast_greedy(graph_to_plot)
 
 # 4.Walktrap
-w <- cluster_walktrap(graph_to_plot)
-plot(w,graph_to_plot)
+walktrap <- cluster_walktrap(graph_to_plot)
 
 # 5.leading eigenvector
-e <- cluster_leading_eigen(graph_to_plot)
-plot(e,graph_to_plot)
+leading_eigenvector <- cluster_leading_eigen(graph_to_plot)
 
 # 6.Spinglass
-s <- cluster_spinglass(graph_to_plot)
-plot(s,graph_to_plot)
+spinglass <- cluster_spinglass(graph_to_plot)
 
 # 7.Infomap
-i <- cluster_infomap(graph_to_plot)
-plot(i,graph_to_plot)
+infomap <- cluster_infomap(graph_to_plot)
 
-# Furthermore
+# show edge betweenness
 edge_betweenness(graph_to_plot)
 
+
+# set the algorithm and plot
+algorithm = newman_girvan
+algorithm = label_propagation
+algorithm = fast_greedy
+algorithm = walktrap
+algorithm = leading_eigenvector
+algorithm = spinglass
+algorithm = infomap
+
+
 # Layout options
-plot(cnet,
-     net,
-vertex.color = "grey",
-vertex.size = 8,
-vertex.label.cex = 0.9,
-vertex.label.color ="black",
-vertex.label.dist=0,
-vertex.shape="square",
-edge.color = 'red',
-edge.arrow.size=.10,
-edge.arrow.width=10,
-arrow.mode=0,
-layout = layout.fruchterman.reingold)
+plot(
+  algorithm,
+  graph_to_plot,
+  #graph_to_plot_simplified,
+  vertex.color = "grey",
+  vertex.size = 5,
+  vertex.label.cex = 0.5,
+  vertex.label.color ="black",
+  vertex.label.dist=0,
+  vertex.shape="square",
+  edge.width=E(graph_to_plot)$weight * .3,
+  arrow.mode=1,
+  layout = layout.auto
+)
 
