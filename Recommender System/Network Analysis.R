@@ -203,10 +203,6 @@ algorithm = leading_eigenvector
 algorithm = spinglass
 algorithm = infomap
 
-# set vertex sizes to according to number of incident edges or default
-setVertexSizes(graph_to_plot)
-setVertexSizes(graph_to_plot, default = TRUE)
-
 
 # Layout options
 plot(
@@ -226,10 +222,6 @@ plot(
   layout = layout.auto
 )
 
-lapply(V(graph_to_plot), function(node){
-  print(node$size)
-  #print(length(incident(graph_to_plot, node, 'all')))
-  #V(graph_to_plot)$size[[node]] = length(incident(graph_to_plot, node, 'all'))
-})
+
 
 
