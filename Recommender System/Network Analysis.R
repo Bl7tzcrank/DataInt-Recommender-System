@@ -92,6 +92,23 @@ createWeightedGraph = function(data){
   return(graph)
 }
 
+# for a given graph, the number of incident edges is assigned as the vertex.size 
+setVertexSizes = function(graph, factor, log = FALSE, default = FALSE){
+  if(default){
+    V(graph)$size = 5
+  }
+  else {
+    for(node in V(graph)){
+      if(log){
+        V(graph)$size[node] = log(length(incident(graph, node, 'all')) * factor)
+      }
+      else {
+        V(graph)$size[node] = length(incident(graph, node, 'all')) * factor
+      }
+    }
+  }
+  return(V(graph)$size)
+}
 
 
 
@@ -186,6 +203,10 @@ algorithm = leading_eigenvector
 algorithm = spinglass
 algorithm = infomap
 
+# set vertex sizes to according to number of incident edges or default
+setVertexSizes(graph_to_plot)
+setVertexSizes(graph_to_plot, default = TRUE)
+
 
 # Layout options
 plot(
@@ -193,7 +214,9 @@ plot(
   graph_to_plot,
   #graph_to_plot_simplified,
   vertex.color = "grey",
-  vertex.size = 5,
+  vertex.size = setVertexSizes(graph_to_plot, 15, log=TRUE, default = FALSE),
+  #vertex.size = setVertexSizes(graph_to_plot, .2, log=FALSE, default = FALSE),
+  #vertex.size = setVertexSizes(graph_to_plot, 0.1, default = TRUE),
   vertex.label.cex = 0.5,
   vertex.label.color ="black",
   vertex.label.dist=0,
@@ -202,4 +225,11 @@ plot(
   arrow.mode=1,
   layout = layout.auto
 )
+
+lapply(V(graph_to_plot), function(node){
+  print(node$size)
+  #print(length(incident(graph_to_plot, node, 'all')))
+  #V(graph_to_plot)$size[[node]] = length(incident(graph_to_plot, node, 'all'))
+})
+
 
