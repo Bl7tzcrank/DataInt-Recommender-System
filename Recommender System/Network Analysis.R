@@ -196,12 +196,19 @@ edge_betweenness(graph_to_plot)
 
 # set the algorithm and plot
 algorithm = newman_girvan
+name = 'Communities based on "Edge-Betweenness"'
 algorithm = label_propagation
+name = 'Communities based on "Label propagation"'
 algorithm = fast_greedy
+name = 'Communities based on "Fast greedy"'
 algorithm = walktrap
+name = 'Communities based on "Walktrap"'
 algorithm = leading_eigenvector
+name = 'Communities based on "Leading eigenvector"'
 algorithm = spinglass
+name = 'Communities based on "Spinglass"'
 algorithm = infomap
+name = 'Communities based on "Infomap"'
 
 
 # Layout options
@@ -219,7 +226,8 @@ plot(
   vertex.shape="square",
   edge.width=E(graph_to_plot)$weight * .3,
   arrow.mode=1,
-  layout = layout.auto
+  layout = layout.auto,
+  main = name
 )
 
 
